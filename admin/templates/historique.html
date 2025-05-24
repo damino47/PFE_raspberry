@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Historique des Stationnements</h1>
+    
+    <!-- Statistiques globales -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="me-3">
+                            <div class="text-white-75 small">Total Véhicules</div>
+                            <div class="text-lg fw-bold" id="total_vehicules">0</div>
+                        </div>
+                        <i class="fas fa-car fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="me-3">
+                            <div class="text-white-75 small">Revenu Total</div>
+                            <div class="text-lg fw-bold" id="revenu_total">0 DT</div>
+                        </div>
+                        <i class="fas fa-money-bill fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="me-3">
+                            <div class="text-white-75 small">Véhicules Aujourd'hui</div>
+                            <div class="text-lg fw-bold" id="vehicules_aujourd_hui">0</div>
+                        </div>
+                        <i class="fas fa-clock fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="me-3">
+                            <div class="text-white-75 small">Véhicules Présents</div>
+                            <div class="text-lg fw-bold" id="vehicules_presents">0</div>
+                        </div>
+                        <i class="fas fa-parking fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filtres -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Date début</label>
+                    <input type="date" class="form-control" id="date_debut">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date fin</label>
+                    <input type="date" class="form-control" id="date_fin">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary" onclick="rechercher()">
+                        <i class="fas fa-search me-1"></i> Rechercher
+                    </button>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col">
+                    <button class="btn btn-outline-primary me-2" id="filterToday">
+                        <i class="fas fa-calendar-day me-1"></i> Aujourd'hui
+                    </button>
+                    <button class="btn btn-outline-primary me-2" id="filterWeek">
+                        <i class="fas fa-calendar-week me-1"></i> Cette semaine
+                    </button>
+                    <button class="btn btn-outline-primary" id="filterMonth">
+                        <i class="fas fa-calendar-alt me-1"></i> Ce mois
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau des stationnements -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-table me-1"></i>
+            Historique détaillé
+        </div>
+        <div class="card-body">
+            <table id="historiqueTable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>N° Plaque</th>
+                        <th>Place</th>
+                        <th>Entrée</th>
+                        <th>Sortie</th>
+                        <th>Durée</th>
+                        <th>Montant Total</th>
+                        <th>Montant Payé</th>
+                        <th>Monnaie</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Initialize DataTables with French localization
+        const table = $('#historiqueTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            order: [[3, 'desc']], // Sort by entry time by default
+            pageLength: 10,
+            responsive: true,
+            columns: [
+                { data: 'id' },
+                { data: 'plaque' },
+                { data: 'place' },
+                { data: 'temps_entree' },
+                { data: 'temps_sortie' },
+                { data: 'duree_formatee' },
+                { 
+                    data: 'montant_total',
+                    render: function(data) {
+                        return data.toFixed(2) + ' DT';
+                    }
+                },
+                { 
+                    data: 'montant_paye',
+                    render: function(data) {
+                        return data.toFixed(2) + ' DT';
+                    }
+                },
+                { 
+                    data: 'montant_change',
+                    render: function(data) {
+                        return data.toFixed(2) + ' DT';
+                    }
+                },
+                { 
+                    data: 'status_paiement',
+                    render: function(data, type, row) {
+                        const statusClass = data === 'completed' ? 'success' : 
+                                          data === 'en_attente' ? 'warning' : 'danger';
+                        const statusText = row.statut_session === 'en_cours' ? 'En cours' :
+                                         row.statut_session === 'terminé' ? 'Terminé' : 'En attente';
+                        return `<span class="badge bg-${statusClass}">${statusText}</span>`;
+                    }
+                }
+            ]
+        });
+        
+        // Load initial data
+        rechercher();
+        
+        // Setup date filter buttons
+        $('#filterToday').click(() => filterDate('today'));
+        $('#filterWeek').click(() => filterDate('week'));
+        $('#filterMonth').click(() => filterDate('month'));
+    });
+
+    function filterDate(period) {
+        const today = new Date();
+        let debut = new Date();
+        
+        switch(period) {
+            case 'today':
+                debut = today;
+                break;
+            case 'week':
+                debut = new Date(today.setDate(today.getDate() - today.getDay()));
+                break;
+            case 'month':
+                debut = new Date(today.getFullYear(), today.getMonth(), 1);
+                break;
+        }
+        
+        $('#date_debut').val(debut.toISOString().split('T')[0]);
+        $('#date_fin').val(new Date().toISOString().split('T')[0]);
+        rechercher();
+    }
+
+    function rechercher() {
+        const dateDebut = $('#date_debut').val();
+        const dateFin = $('#date_fin').val();
+        
+        $.get(`/api/historique?date_debut=${dateDebut}&date_fin=${dateFin}`)
+            .done(function(data) {
+                console.log('Données reçues de l\'API:', data);
+                
+                if (!data.historique) {
+                    console.error('Aucune donnée historique trouvée dans la réponse');
+                    alert('Aucune donnée disponible pour la période sélectionnée');
+                    return;
+                }
+
+                // Mettre à jour le tableau
+                const table = $('#historiqueTable').DataTable();
+                table.clear();
+                
+                // Formater les données avant de les ajouter au tableau
+                const formattedData = data.historique.map(item => {
+                    return {
+                        id: item.id || '-',
+                        plaque: item.plaque || 'Inconnue',
+                        place: item.place || '-',
+                        temps_entree: item.temps_entree || '-',
+                        temps_sortie: item.temps_sortie || '-',
+                        duree_formatee: item.duree_formatee || '-',
+                        montant_total: parseFloat(item.montant_total || 0),
+                        montant_paye: parseFloat(item.montant_paye || 0),
+                        montant_change: parseFloat(item.montant_change || 0),
+                        status_paiement: item.status_paiement || 'inconnu',
+                        statut_session: item.statut_session || 'inconnu'
+                    };
+                });
+                
+                console.log('Données formatées pour DataTables:', formattedData);
+                
+                table.rows.add(formattedData).draw();
+                
+                // Mettre à jour les statistiques
+                if (data.stats) {
+                    $('#total_vehicules').text(data.stats.total_vehicules || 0);
+                    $('#revenu_total').text((data.stats.revenu_total || 0).toFixed(2) + ' DT');
+                    $('#vehicules_aujourd_hui').text(data.stats.vehicules_aujourd_hui || 0);
+                    $('#vehicules_presents').text(data.stats.vehicules_presents || 0);
+                }
+            })
+            .fail(function(jqXHR, textStatus, errorThrown) {
+                console.error('Erreur lors de la récupération des données:', {
+                    status: jqXHR.status,
+                    statusText: jqXHR.statusText,
+                    responseText: jqXHR.responseText
+                });
+                alert('Erreur lors de la récupération des données. Voir la console pour plus de détails.');
+            });
+    }
+</script>
+{% endblock %}

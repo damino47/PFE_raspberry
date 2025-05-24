@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">Gestion des Utilisateurs</h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <i class="fas fa-user-plus me-2"></i>Ajouter un utilisateur
+        </button>
+    </div>
+
+    <!-- Table des utilisateurs -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-users me-1"></i>
+            Liste des utilisateurs
+        </div>
+        <div class="card-body">
+            <table id="usersTable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Prénom</th>
+                        <th>CIN</th>
+                        <th>Adresse</th>
+                        <th>Rôle</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajout Utilisateur -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un utilisateur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="mb-3">
+                        <label class="form-label">Nom</label>
+                        <input type="text" class="form-control" name="nom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Prénom</label>
+                        <input type="text" class="form-control" name="prenom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Numéro CIN</label>
+                        <input type="text" class="form-control" name="cin" pattern="[0-9]{8}" maxlength="8" required>
+                        <div class="form-text">Le numéro CIN doit contenir 8 chiffres</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Adresse</label>
+                        <textarea class="form-control" name="adresse" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" name="password" required>
+                        <div class="form-text">Le mot de passe doit contenir au moins 8 caractères</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirmer le mot de passe</label>
+                        <input type="password" class="form-control" name="password_confirm" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rôle</label>
+                        <select class="form-select" name="role" required>
+                            <option value="user">Utilisateur</option>
+                            <option value="admin">Administrateur</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="addUser()">Ajouter</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Initialiser DataTables
+        const table = $('#usersTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/fr-FR.json'
+            },
+            ajax: {
+                url: '/api/users',
+                dataSrc: 'users'
+            },
+            columns: [
+                { data: 'nom' },
+                { data: 'prenom' },
+                { data: 'cin' },
+                { data: 'adresse' },
+                { data: 'role' },
+                {
+                    data: null,
+                    render: function(data, type, row) {
+                        return `
+                            <button class="btn btn-sm btn-warning me-1" onclick="editUser(${row.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser(${row.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `;
+                    }
+                }
+            ]
+        });
+    });
+
+    function addUser() {
+        const form = document.getElementById('addUserForm');
+        const formData = new FormData(form);
+        
+        // Vérifier que les mots de passe correspondent
+        if (formData.get('password') !== formData.get('password_confirm')) {
+            alert('Les mots de passe ne correspondent pas');
+            return;
+        }
+
+        // Créer l'objet de données
+        const data = {
+            username: formData.get('cin'), // Utiliser le CIN comme nom d'utilisateur
+            nom: formData.get('nom'),
+            prenom: formData.get('prenom'),
+            cin: formData.get('cin'),
+            adresse: formData.get('adresse'),
+            password: formData.get('password'),
+            role: formData.get('role')
+        };
+
+        // Envoyer la requête
+        fetch('/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                $('#addUserModal').modal('hide');
+                $('#usersTable').DataTable().ajax.reload();
+                form.reset();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de l\'ajout de l\'utilisateur');
+        });
+    }
+
+    function deleteUser(userId) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+            fetch(`/api/users/${userId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    $('#usersTable').DataTable().ajax.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Erreur lors de la suppression');
+            });
+        }
+    }
+</script>
+{% endblock %}

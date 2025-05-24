@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration Parking OACA</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+        }
+
+        .navbar {
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            height: 40px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .notification-icon {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            padding: 0.25rem;
+            font-size: 0.75rem;
+            min-width: 15px;
+            text-align: center;
+        }
+
+        .main-content {
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--secondary-color);
+        }
+
+        .parking-spots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .spot {
+            padding: 1rem;
+            border-radius: 4px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .spot.available {
+            background-color: var(--success-color);
+        }
+
+        .spot.occupied {
+            background-color: var(--danger-color);
+        }
+
+        .equipment-status {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .equipment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .status-ok {
+            background-color: var(--success-color);
+        }
+
+        .status-warning {
+            background-color: var(--warning-color);
+        }
+
+        .status-error {
+            background-color: var(--danger-color);
+        }
+
+        .sessions-list {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sessions-list th,
+        .sessions-list td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .sessions-list th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        #notificationsPanel {
+            display: none;
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .notification-item {
+            padding: 1rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-error {
+            color: var(--danger-color);
+        }
+
+        .notification-warning {
+            color: var(--warning-color);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <img src="{{ url_for('static', filename='images/OACA.jpg') }}" alt="OACA Logo" class="logo">
+        <div class="nav-links">
+            <div class="notification-icon" onclick="toggleNotifications()">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge" id="notificationCount">0</span>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </nav>
+
+    <div id="notificationsPanel">
+        <!-- Les notifications seront injectées ici par JavaScript -->
+    </div>
+
+    <main class="main-content">
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">État du Parking</h2>
+                </div>
+                <div class="parking-spots" id="parkingSpots">
+                    <!-- Les places seront injectées ici par JavaScript -->
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">État des Équipements</h2>
+                </div>
+                <div class="equipment-status" id="equipmentStatus">
+                    <!-- L'état des équipements sera injecté ici par JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Sessions Actives</h2>
+            </div>
+            <table class="sessions-list">
+                <thead>
+                    <tr>
+                        <th>Immatriculation</th>
+                        <th>Heure d'entrée</th>
+                        <th>Durée</th>
+                        <th>Montant</th>
+                        <th>État</th>
+                    </tr>
+                </thead>
+                <tbody id="sessionsList">
+                    <!-- Les sessions seront injectées ici par JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        let notifications = [];
+        let parkingSpots = [];
+        let equipmentStatus = [];
+        let sessions = [];
+
+        function toggleNotifications() {
+            const panel = document.getElementById('notificationsPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function updateNotifications() {
+            fetch('/api/notifications')
+                .then(response => response.json())
+                .then(data => {
+                    notifications = data;
+                    document.getElementById('notificationCount').textContent = notifications.length;
+                    
+                    const panel = document.getElementById('notificationsPanel');
+                    panel.innerHTML = notifications.map(notification => `
+                        <div class="notification-item notification-${notification.type}">
+                            <p>${notification.message}</p>
+                            <small>${new Date(notification.created_at).toLocaleString()}</small>
+                        </div>
+                    `).join('');
+                });
+        }
+
+        function updateParkingSpots() {
+        }
+
+        async function updateDetections() {
+            try {
+                const response = await fetch('/api/detections');
+                const detections = await response.json();
+                
+                document.getElementById('detectionsList').innerHTML = detections.map(detection => `
+                    <div class="detection-card">
+                        <img src="${detection.image_path}" class="detection-image" alt="Détection">
+                        <div class="detection-info">
+                            <h5>Immatriculation: ${detection.texte_extrait}</h5>
+                            <p>Type: ${detection.type_detection === 'entree' ? 'Entrée' : 'Sortie'}</p>
+                            <p>Date: ${new Date(detection.created_at).toLocaleString()}</p>
+                            <p>Statut: <span class="badge bg-${detection.status === 'en_cours' ? 'primary' : 'success'}">
+                                ${detection.status === 'en_cours' ? 'En cours' : 'Terminé'}
+                            </span></p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Erreur lors de la mise à jour des détections:', error);
+            }
+        }
+
+        function updateSessions() {
+            fetch('/api/sessions')
+                .then(response => response.json())
+                .then(data => {
+                    sessions = data;
+                    document.getElementById('sessionsList').innerHTML = sessions.map(session => {
+                        const duration = Math.floor((new Date() - new Date(session.heure_entree)) / (1000 * 60));
+                        return `
+                            <tr>
+                                <td>${session.immatriculation}</td>
+                                <td>${new Date(session.heure_entree).toLocaleString()}</td>
+                                <td>${duration} minutes</td>
+                                <td>${session.montant_paye || '0'} DT</td>
+                                <td>${session.status_paiement || 'En attente'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                });
+        }
+
+        // Mise à jour initiale
+        updateNotifications();
+        updateParkingSpots();
+        updateEquipmentStatus();
+        updateSessions();
+
+        // Mise à jour périodique
+        setInterval(() => {
+            updateNotifications();
+            updateParkingSpots();
+            updateEquipmentStatus();
+            updateSessions();
+        }, 5000);
+    </script>
+</body>
+</html>
