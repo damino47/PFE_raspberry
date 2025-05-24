@@ -124,13 +124,30 @@ temps_sortie = 'temps_sortie'
 duree_minutes = 'duree_minutes'
 montant = 'montant'
 
+
+# Récupérer l'ID de la dernière voiture ayant enregistré une sortie
+query_last_vehicle = '''
+    SELECT id 
+    FROM historique_stationnement
+    WHERE temps_sortie IS NOT NULL
+    ORDER BY temps_sortie DESC
+    LIMIT 1
+'''
+
+cursor = conn.cursor(dictionary=True)
+cursor.execute(query_last_vehicle)
+last_vehicle = cursor.fetchone()
+
+if last_vehicle:
+    vehicle_id = last_vehicle['id']
+    print(f"ID de la dernière voiture ayant enregistré une sortie : {vehicle_id}")
+
+
 # Exemple d'ID pour récupérer les données
-vehicle_id = 29
 
 cursor = conn.cursor(dictionary=True)
 cursor.execute(query, (vehicle_id,))
 data = cursor.fetchone()
-
 
 # Vérifiez si les données existent
 if data:
